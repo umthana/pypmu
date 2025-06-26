@@ -1,4 +1,4 @@
-import random
+# import random
 import math
 
 from synchrophasor.frame import ConfigFrame2
@@ -11,6 +11,11 @@ After request to start sending measurements - random
 values for phasors will be sent.
 """
 
+def increase_angle(ang, delta):
+    """Increase angle by delta, wrapping around at -pi to pi."""
+    ang += delta
+    ang = (ang + math.pi) % (2 * math.pi) - math.pi
+    return ang
 
 if __name__ == "__main__":
 
@@ -19,6 +24,8 @@ if __name__ == "__main__":
     
     ph_v_conversion = int(400 / 65535 * 100000)  # Voltage phasor conversion factor
     ph_i_conversion = int(100 / 32768 * 100000)  # Current phasor conversion factor
+
+    report_rate = 50  # Data rate in Hz
 
     cfg = ConfigFrame2(
         1410,  # PMU_ID (use the port as ID if needed, or set as required)
@@ -40,8 +47,14 @@ if __name__ == "__main__":
         [[], [], []],  # Digital units
         [50, 50, 50],  # Nominal frequency
         [0, 0, 0],  # Configuration change count
-        50  # Data rate
+        report_rate  # Data rate
     )
+
+    va_ang = 0
+    vb_ang = -2 * math.pi / 3
+    vc_ang = 2 * math.pi / 3
+    delfreq = 100  # Frequency deviation in mHz
+    delang = delfreq/1000 * 2 * math.pi / report_rate  # Phase angle deviation in radians per report rate
 
     pmu.set_configuration(cfg)
     pmu.set_header("Hey! I'm randomPMU! Guess what? I'm sending random measurements values!")
@@ -50,25 +63,29 @@ if __name__ == "__main__":
 
     while True:
         if pmu.clients:
+            va_ang = increase_angle(va_ang, delang)
+            vb_ang = increase_angle(vb_ang, delang)
+            vc_ang = increase_angle(vc_ang, delang)
+
             pmu.send_data(
                 phasors=[
                     [
-                        (random.uniform(220, 230), 0),  # Station A, Va
-                        (10, -math.pi/6)    # Station A, Ia
+                        (220, va_ang),  # Station A, Va
+                        (0, 0)    # Station A, Ia
                     ],
                     [
-                        (random.uniform(220, 230), -2*math.pi/3),  # Station B, Vb
-                        (10, -5*math.pi/6)   # Station B, Ib
+                        (220, vb_ang),  # Station B, Vb
+                        (0, 0)   # Station B, Ib
                     ],
                     [
-                        (random.uniform(220, 230), 2*math.pi/3), # Station C, Vc
-                        (10, math.pi/2)   # Station C, Ic
+                        (220, vc_ang), # Station C, Vc
+                        (0, 0)   # Station C, Ic
                     ]
                 ],
                 stat=[0, 0, 0],
                 analog=[[], [], []],   # No analog values
                 digital=[[], [], []],   # No digital values
-                freq=[0, 0, 0],  # frequency
+                freq=[delfreq, delfreq, delfreq],  # frequency
                 dfreq=[0, 0, 0] # Rate of change of frequency
             )
 

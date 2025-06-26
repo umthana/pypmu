@@ -167,22 +167,24 @@ class Pmu(object):
             if not (self.cfg2.get_num_pmu() == len(self.cfg2.get_data_format()) == len(phasors)):
                 raise PmuError("Incorrect input. Please provide PHASORS as list of lists with NUM_PMU elements.")
 
-            for i, df in self.cfg2.get_data_format():
+            for i, df in enumerate(self.cfg2.get_data_format()):
                 if not df[1]:  # Check if phasor representation is integer
-                    phasors[i] = map(lambda x: int(x / (0.00001 * self.cfg2.get_ph_units()[i])), phasors[i])
+                    phasors[i] = [(int(x[0] / (0.00001 * self.cfg2.get_ph_units()[i][j][0])),  # conversion factor for each phasor
+                                   int(x[1] / 0.0001)) for j, x in enumerate(phasors[i])]
         elif not self.cfg2.get_data_format()[1]:
-            phasors = map(lambda x: int(x / (0.00001 * self.cfg2.get_ph_units())), phasors)
+            phasors = [(int(x[0] / (0.00001 * self.cfg2.get_ph_units()[j][0])),  # conversion factor for each phasor
+                                   int(x[1] / 0.0001)) for j, x in enumerate(phasors)]
 
         # AN_UNIT conversion
         if analog and self.cfg2.get_num_pmu() > 1:  # Check if multistreaming:
             if not (self.cfg2.get_num_pmu() == len(self.cfg2.get_data_format()) == len(analog)):
                 raise PmuError("Incorrect input. Please provide analog ANALOG as list of lists with NUM_PMU elements.")
 
-            for i, df in self.cfg2.get_data_format():
+            for i, df in enumerate(self.cfg2.get_data_format()):
                 if not df[2]:  # Check if analog representation is integer
-                    analog[i] = map(lambda x: int(x / self.cfg2.get_analog_units()[i]), analog[i])
+                    analog[i] = list(map(lambda x: int(x / self.cfg2.get_analog_units()[i]), analog[i]))
         elif not self.cfg2.get_data_format()[2]:
-            analog = map(lambda x: int(x / self.cfg2.get_analog_units()), analog)
+            analog = list(map(lambda x: int(x / self.cfg2.get_analog_units()), analog))
 
         data_frame = DataFrame(self.cfg2.get_id_code(), stat, phasors, freq, dfreq, analog, digital, self.cfg2)
 

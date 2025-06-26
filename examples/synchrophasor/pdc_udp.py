@@ -63,38 +63,44 @@ class PdcUdp(object):
 
     def get_header(self):
         """
-        Request for PMU header message
+        Request for PMU header message.
+        Keeps trying until a valid HeaderFrame is received.
         :return: HeaderFrame
         """
-        get_header = CommandFrame(self.pdc_id, "header")
-        self.pmu_socket.sendto(get_header.convert2bytes(), self.pmu_address)
+        while True:
+            get_header = CommandFrame(self.pdc_id, "header")
+            self.pmu_socket.sendto(get_header.convert2bytes(), self.pmu_address)
 
-        self.logger.info("[%d] - Requesting header message from PMU (%s:%d)", self.pdc_id, self.pmu_ip, self.pmu_port)
+            self.logger.info("[%d] - Requesting header message from PMU (%s:%d)", self.pdc_id, self.pmu_ip, self.pmu_port)
 
-        header = self.get()
-        if isinstance(header, HeaderFrame):
-            return header
-        else:
-            raise PdcError("Invalid Header message received")
+            header = self.get()
+            if isinstance(header, HeaderFrame):
+                return header
+            else:
+                self.logger.warning("[%d] - Invalid Header message received, retrying...", self.pdc_id)
 
     def get_config(self, version="cfg2"):
         """
         Request for Configuration frame.
+        Keeps trying until a valid ConfigFrame is received.
         :param version: string Possible values "cfg1", "cfg2" and "cfg3"
         :return: ConfigFrame
         """
-        get_config = CommandFrame(self.pdc_id, version)
-        self.pmu_socket.sendto(get_config.convert2bytes(), self.pmu_address)
+        while True:
+            get_config = CommandFrame(self.pdc_id, version)
+            self.pmu_socket.sendto(get_config.convert2bytes(), self.pmu_address)
 
-        config = self.get()
-        if type(config) == ConfigFrame1:
-            self.pmu_cfg1 = config
-        elif type(config) == ConfigFrame2:
-            self.pmu_cfg2 = config
-        else:
-            raise PdcError("Invalid Configuration message received")
+            self.logger.info("[%d] - Requesting config (%s) from PMU (%s:%d)", self.pdc_id, version, self.pmu_ip, self.pmu_port)
 
-        return config
+            config = self.get()
+            if type(config) == ConfigFrame1:
+                self.pmu_cfg1 = config
+                return config
+            elif type(config) == ConfigFrame2:
+                self.pmu_cfg2 = config
+                return config
+            else:
+                self.logger.warning("[%d] - Invalid Configuration message received, retrying...", self.pdc_id)
 
     def get(self):
         """
